@@ -1,0 +1,55 @@
+#### Python Virtual Environment ####
+module load gcc/13.2.0 python/3.11.7 tmux/3.4 cuda/12.4.1
+module list
+python -m venv /scratch/jlhsieh/leo_scratch/venv-leo
+source /scratch/jlhsieh/leo_scratch/venv-leo/bin/activate
+
+pip install --no-cache-dir --upgrade pip
+pip install --no-cache-dir --upgrade uv
+uv pip install --no-cache-dir --upgrade wandb
+uv pip install --no-cache-dir --upgrade numpy matplotlib tqdm
+uv pip install --no-cache-dir --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+uv pip install --no-cache-dir --upgrade datasets
+
+#### Daily use ####
+module load gcc/13.2.0 python/3.11.7 tmux/3.4 cuda/12.4.1
+source /scratch/jlhsieh/leo_scratch/venv-leo/bin/activate
+
+cd /scratch/jlhsieh/leo_scratch/leo-code-space
+sbatch /scratch/jlhsieh/leo_scratch/leo-code-space/job_leo.sh 
+Squeue
+
+
+
+
+
+module -r spider '.*protobuf.*'
+
+
+Sinteract -g gpu:1 -c2 -t 0:10:00 -m 4G -p l40s -q kuma
+ssh -L 8541:10.91.52.2:8541 -l jlhsieh kuma.hpc.epfl.ch -f -N
+
+#### NAS ####
+dbus-run-session -- bash
+gio mount smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
+gio list smb://intranet\;j  lhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
+gio tree smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
+gio copy -pi smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh/SZZDist_teacher_20241002.tar ~/
+gio mount -u     smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
+
+
+#### /scratch ####   Files older than 30 days are automatically removed without notice.
+cp -pi ~/SZZDist_teacher_20241002.tar /scratch/jlhsieh/
+cp -pi ~/TextFile.txt /scratch/jlhsieh/
+
+
+#### Compress & Uncompress
+    c:  
+    x : Extract files
+    f : Tar archive name
+    --directory : Set directory name to extract files
+    -C : Set dir name to extract files
+    -z : Work on .tar.gz (gzip) file format
+    -j : Work on .tar.bz2 (bzip2) file format
+    -J (capital J) : Work on .tar.xz (xz) file format (see how to extract tar.xz files in Linux for more details)
+    -v : Verbose output i.e. show progress on screen

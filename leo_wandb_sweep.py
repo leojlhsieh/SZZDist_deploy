@@ -18,6 +18,7 @@ from torch.utils.data import Dataset  # For custom dataset of PyTorch
 from torch.utils.data import DataLoader  # Easy to get datasets in batches, shuffle, multiprocess, etc.
 from argparse import ArgumentParser
 from model.leo_model_v20241015 import build_model
+from torcheval.metrics.functional import multiclass_accuracy
 
 # Get the arguments
 parser = ArgumentParser()
@@ -26,7 +27,7 @@ parser.add_argument("--data_name", type=str, choices=['my_mnist', 'my_fashion_mn
 parser.add_argument("--sweep_id", type=str)
 parser.add_argument("--epochs", type=int, default=50)
 parser.add_argument("--batch_size", type=int, default=60)
-parser.add_argument("--small_toy", action="store_true")
+parser.add_argument("--small_toy", action="store_true", default=True, help="Use a small toy dataset for debugging")
 parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 args = parser.parse_args()
 print(f'{args = }')
@@ -58,10 +59,15 @@ print(f"{NUM_WORKERS = }")
 
 
 # %%  Step 1️: Define a sweep configuration
+entity_name = 'leohsieh-epfl'
+project_name = 'szzbpm-distil-3'
+
 if args.sweep_id is None:
     sweep_config = {
+        'entity': entity_name,
+        'project': project_name,
         'method': 'random',
-        'metric': {'goal': 'maximize', 'name': 'test_accuracy'},
+        'metric': {'goal': 'maximize', 'name': 'test/accuracy'},
         'parameters': {'data_name': {'value': args.data_name},  # choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette']
                        'epochs': {'value': args.epochs},
                        'batch_size': {'value': args.batch_size},
@@ -94,12 +100,12 @@ if args.sweep_id is None:
 
 # %%  Step 2️: Initialize the Sweep
 wandb.login(key='c08ff557ed402c26a0c57ca0e7803529bdba9268')
-project_name = 'szzbpm-distil-3'
+
 if args.sweep_id is None:
-    sweep_id = wandb.sweep(sweep_config, project=project_name)
+    sweep_id = wandb.sweep(sweep_config)
 else:
     sweep_id = args.sweep_id
-sweep_id = f'leohsieh-epfl/{project_name}/{sweep_id}'
+sweep_id = f'{entity_name}/{project_name}/{sweep_id}'
 print(f'{sweep_id = }')
 
 
@@ -136,6 +142,7 @@ def train(config=None):
         for epoch in range(config.epochs):
             print(f"---------- Epoch: {epoch}----------")
             # Training
+            wandb.watch(model_bpm)
             model_bpm.train()
             model_feature.train()
             model_class.train()
@@ -171,7 +178,9 @@ def train(config=None):
             train_loss_2_epoch /= len(tarin_loader)
             train_loss_total_epoch /= len(tarin_loader)
             print(f"Train Loss 1: {train_loss_1_epoch:.5f}, Train Loss 2: {train_loss_2_epoch:.5f}, Train Loss Total: {train_loss_total_epoch:.5f}")
-            wandb.log({'train_loss_1': train_loss_1_epoch, 'train_loss_2': train_loss_2_epoch, 'train_loss_total': train_loss_total_epoch})
+            wandb.log({"epoch": epoch, "train/loss_1": train_loss_1_epoch})
+            wandb.log({"epoch": epoch, "train/loss_2": train_loss_2_epoch})
+            wandb.log({"epoch": epoch, "train/loss_total": train_loss_total_epoch})
 
             # Testing
             model_bpm.eval()
@@ -180,6 +189,8 @@ def train(config=None):
             test_loss_1_epoch = 0
             test_loss_2_epoch = 0
             test_loss_total_epoch = 0
+            test_accuracy_epoch = 0
+            test_f1_epoch = 0
             # Turn on inference context manager
             with torch.inference_mode():
                 for batch, data in enumerate(test_loader):
@@ -196,15 +207,22 @@ def train(config=None):
                     loss_1 = loss_fn_1(feature_pred, feature)
                     loss_2 = loss_fn_2(logit_pred, label)  # For Pytorch CrossEntropyLoss, the input is expected to contain raw. Do NOT apply softmax and argmax before passing it to the loss function.
                     loss_total = config.loss_ratio * loss_1 + (1 - config.loss_ratio) * loss_2
+                    test_accuracy = multiclass_accuracy(label_pred, target=label)
 
                     test_loss_1_epoch += loss_1.item()
                     test_loss_2_epoch += loss_2.item()
                     test_loss_total_epoch += loss_total.item()
+                    test_accuracy_epoch += test_accuracy.item()
                 test_loss_1_epoch /= len(test_loader)
                 test_loss_2_epoch /= len(test_loader)
                 test_loss_total_epoch /= len(test_loader)
+                test_accuracy_epoch /= len(test_loader)
                 print(f"Test Loss 1: {test_loss_1_epoch:.5f}, Test Loss 2: {test_loss_2_epoch:.5f}, Test Loss Total: {test_loss_total_epoch:.5f}")
-                wandb.log({'test_loss_1': test_loss_1_epoch, 'test_loss_2': test_loss_2_epoch, 'test_loss_total': test_loss_total_epoch})
+                print(f"Test Accuracy: {test_accuracy_epoch:.5f}")
+                wandb.log({"epoch": epoch, "test/loss_1": test_loss_1_epoch})
+                wandb.log({"epoch": epoch, "test/loss_2": test_loss_2_epoch})
+                wandb.log({"epoch": epoch, "test/loss_total": test_loss_total_epoch})
+                wandb.log({"epoch": epoch, "test/accuracy": test_accuracy_epoch})
         print("All epochs completed!")
 
 
@@ -274,7 +292,17 @@ def build_dataset(data_name, batch_size):
     return train_dataloader, test_dataloader, data_info
 
 
+
+
+
+
+
 # %%  Step 4: Activate sweep agents
 wandb.agent(sweep_id, train, count=5)
 
 wandb.finish()
+
+
+
+
+# %%

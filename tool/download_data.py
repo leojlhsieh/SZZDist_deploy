@@ -1,7 +1,15 @@
 import pathlib
 import urllib.request
 import tarfile
+from argparse import ArgumentParser
 
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+    # filename="log_leo.log",
+)
 
 def download_file(url, destination='.'):
     """Download a file from a URL to a specified destination."""
@@ -50,10 +58,13 @@ def download_and_extract(data_name: str) -> None:
 
 
 if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument("--data_name", type=str, choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'])  # , required=True)
+    args = parser.parse_args()
+
+    logging.info(f"Downloading and extracting {args.data_name} dataset")
     import time
     start_time = time.time()
-    download_and_extract('my_mnistPP')
-    download_and_extract('my_fashion_mnist')
-    download_and_extract('my_cifar10')
-    download_and_extract('my_imagenette')
-    print(f"--- {time.time() - start_time} seconds ---")
+    download_and_extract(args.data_name)
+    logging.info(f"Download and extract success!")
+    logging.info(f"--- {time.time() - start_time} seconds ---")

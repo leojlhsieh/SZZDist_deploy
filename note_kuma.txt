@@ -22,8 +22,13 @@ source /scratch/jlhsieh/leo_scratch/venv-leo/bin/activate
 cd /scratch/jlhsieh/leo_scratch/leo-code-space
 sbatch /scratch/jlhsieh/leo_scratch/leo-code-space/job_leo.sh 
 Squeue
-scancel JOBID
-Sjob JOBID
+
+scontrol -d show job JOBID  # show everything about a running or pending job
+
+scancel JOBID  # cancel a specific job
+scancel -u $USER -t PENDING  # cancel all your jobs that are not yet running: 
+
+Sjob JOBID  # information about jobs that have recently finished
 
 
 git clone https://github.com/leojlhsieh/SZZDist_deploy.git

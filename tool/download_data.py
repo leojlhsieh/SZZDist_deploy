@@ -9,7 +9,7 @@ def download_file(url, destination='.'):
         # Download the file from the URL
         print(f"Downloading file from: {url}")
         urllib.request.urlretrieve(url, destination)
-        print(f"Downloaded file: {destination}")
+        print(f"Download successful") 
     except Exception as e:
         print(f"Error downloading file: {e}")
 

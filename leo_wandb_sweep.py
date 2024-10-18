@@ -15,6 +15,7 @@ from torchvision.transforms import v2
 from tqdm.auto import tqdm
 from datetime import datetime
 from tool.check_gpu import check_gpu
+from tool.download_data import download_and_extract
 from datasets import load_from_disk  # Huggingface datasets  # pip install datasets
 from torch.utils.data import Dataset  # For custom dataset of PyTorch
 from torch.utils.data import DataLoader  # Easy to get datasets in batches, shuffle, multiprocess, etc.
@@ -24,17 +25,21 @@ from torcheval.metrics.functional import multiclass_accuracy
 
 # Get the arguments
 parser = ArgumentParser()
-parser.add_argument("--machine_name", type=str, choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_H100', 'kuma_H100'], default='musta_2080Ti', required=True)
-parser.add_argument("--data_name", type=str, choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'], default='my_cifar10', required=True)
-parser.add_argument("--sweep_id", type=str)
+parser.add_argument("--machine_name", type=str, default='musta_3090Ti', choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_H100', 'kuma_H100'])  # , required=True)
+parser.add_argument("--data_name", type=str, default='my_cifar10', choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'])  # , required=True)
+parser.add_argument("--sweep_id", type=str, default='hnlhb6il')  # If None, create a new sweep. Otherwise, use the existing sweep.
 parser.add_argument("--epochs", type=int, default=50)
-parser.add_argument("--batch_size", type=int, default=60)
-parser.add_argument("--small_toy", action="store_true", default=True, help="Use a small toy dataset for debugging")
-parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--small_toy", action="store_true", default=False, help="Use a small toy dataset for debugging")
+parser.add_argument("--verbose", action="store_true", default=False)
 parser.add_argument("--save_total_limit", type=int, default=4)
-
+parser.add_argument("--entity_name", type=str, default='leohsieh-epfl')
+parser.add_argument("--project_name", type=str, default='szzbpm-distil-3')
+parser.add_argument("--num_cpu_worker", type=int, default=0)
 args = parser.parse_args()
-print(f'{args = }')
+pprint(vars(args), sort_dicts=False)
+
+# %%
 
 # Ensure deterministic behavior
 torch.backends.cudnn.deterministic = True
@@ -47,29 +52,27 @@ torch.cuda.manual_seed_all(hash("so runs are repeatable") % 2**32 - 1)
 # Device configuration
 if args.machine_name == 'musta_2080Ti':
     device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    os.environ["CUDA_VISIBLE_DEVICES"]="1"
 else:
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    os.environ["CUDA_VISIBLE_DEVICES"]="0"
 check_gpu()
 print(f'{device = }')
+print(f"{os.cpu_count() = }, {args.num_cpu_worker = }")
 
 machine_name = args.machine_name
 time_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 wanb_name = f'{machine_name}--{time_stamp}'
 print(f'{wanb_name = }')  # Example: "musta_3090Ti--2024-10-17_15-09-58"
 
-NUM_WORKERS = os.cpu_count()
-NUM_WORKERS = 0
-print(f"{NUM_WORKERS = }")
-
 
 # %%  Step 1️: Define a sweep configuration
-entity_name = 'leohsieh-epfl'
-project_name = 'szzbpm-distil-3'
 
 if args.sweep_id is None:
     sweep_config = {
-        'entity': entity_name,
-        'project': project_name,
+        'entity': args.entity_name,
+        'project': args.project_name,
+        'name': f'full-sweep-on-{args.data_name}-{time_stamp}',
         'method': 'random',
         'metric': {'goal': 'maximize', 'name': 'test/accuracy'},
         'parameters': {'data_name': {'value': args.data_name},  # choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette']
@@ -96,10 +99,10 @@ if args.sweep_id is None:
                        'bpm_depth': {'value': 4},  # 1, 2, 3, 4, 5, 6, 7, 8
                        'bpm_width': {'value': 300},  # 75, 150, 300, 600, 1200
                        'bpm_parallel': {'value': 1},  # 1, 3
-                       'model_feature': {'value': 'maxpool30-ReLU'},  # 'CNN-ReLU', 'rearange', 'nothing'
+                       'model_feature': {'value': 'maxpool30-ReLU'},  # 'maxpool30-ReLU', 'CNN-ReLU', 'rearange', 'nothing'
                        }
     }
-    pprint(sweep_config)
+    pprint(sweep_config, sort_dicts=False)
 
 
 # %%  Step 2️: Initialize the Sweep
@@ -109,22 +112,24 @@ if args.sweep_id is None:
     sweep_id = wandb.sweep(sweep_config)
 else:
     sweep_id = args.sweep_id
-sweep_id = f'{entity_name}/{project_name}/{sweep_id}'
+sweep_id = f'{args.entity_name}/{args.project_name}/{sweep_id}'
 print(f'{sweep_id = }')
 
-
+exit()
 # %%  Step 3: Define your machine learning code
 def train(config=None):
+    print(f'def train(config=None): {device = }')
     # Initialize a new wandb run
     with wandb.init(config=config, name=wanb_name):
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
         config = wandb.config
 
-        image_transform = build_transforms(config.bpm_color, device=device)
-        tarin_loader, test_loader, data_info = build_dataset(config.data_name, config.batch_size)
-        model_bpm, model_feature, model_classifier = build_model(config.bpm_color, config.bpm_mode, config.bpm_depth, config.bpm_width, config.bpm_parallel, config.model_feature, device=device)
-        pprint(data_info)
+        # choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette']
+        image_transform = build_transforms(config['bpm_color'], device=device)
+        tarin_loader, test_loader, data_info = build_dataset(config['data_name'], config['batch_size'])
+        model_bpm, model_feature, model_classifier = build_model(config['bpm_color'], config['bpm_mode'], config['bpm_depth'], config['bpm_width'], config['bpm_parallel'], config['model_feature'], device=device)
+        pprint(data_info, sort_dicts=False)
 
         loss_fn_1 = nn.HuberLoss().to(device)
         loss_fn_2 = nn.CrossEntropyLoss().to(device)
@@ -144,9 +149,8 @@ def train(config=None):
             final_div_factor=256)
 
         saved_checkpoint = [{'acc': 0.00, 'path': None},]
-        wandb.watch((model_bpm, model_feature, model_classifier), log_freq=data_info['train_batches'])
-        time_start = time.time()
         for epoch in range(config.epochs):
+            time_start = time.time()
             print(f"---------- Epoch: {epoch}----------")
             # ===== Training =====
             model_bpm.train()
@@ -194,6 +198,12 @@ def train(config=None):
             wandb.log({"epoch": epoch, "train/loss_1": train_loss_1_epoch})
             wandb.log({"epoch": epoch, "train/loss_2": train_loss_2_epoch})
             wandb.log({"epoch": epoch, "train/loss_total": train_loss_total_epoch})
+            for name, data in model_bpm.named_parameters():            
+                wandb.log({"epoch": epoch, f"parameters/model_bpm.{name}": wandb.Histogram(data.detach().cpu().numpy())})
+            for name, data in model_feature.named_parameters():            
+                wandb.log({"epoch": epoch, f"parameters/model_feature.{name}": wandb.Histogram(data.detach().cpu().numpy())})
+            for name, data in model_classifier.named_parameters():            
+                wandb.log({"epoch": epoch, f"parameters/model_classifier.{name}": wandb.Histogram(data.detach().cpu().numpy())})
 
             # ===== Testing =====
             model_bpm.eval()
@@ -236,27 +246,31 @@ def train(config=None):
             wandb.log({"epoch": epoch, "test/loss_2": test_loss_2_epoch})
             wandb.log({"epoch": epoch, "test/loss_total": test_loss_total_epoch})
             wandb.log({"epoch": epoch, "test/accuracy": test_accuracy_epoch})
-            runtime_minute = (time.time() - start_time) / 60.0
+            runtime_minute = (time.time() - time_start) / 60.0
             wandb.log({"epoch": epoch, "runtime/minute": runtime_minute})
             print(f"One epoch runt {runtime_minute:.2f} minutes, train {data_info['train_batches']} batches, test {data_info['test_batches']} batches")
 
             # ===== Save model checkpoint =====
             checkpoint_dir = pathlib.Path(__file__).parent / 'checkpoint' / f'{wanb_name}'
             checkpoint_dir.mkdir(exist_ok=True, parents=True)
-            checkpoint_file_dir = checkpoint_dir / f'acc{acc:.5f}-checkpoint.pth'
+            checkpoint_file_dir = checkpoint_dir / f'acc{test_accuracy_epoch:.5f}-epoch{epoch:03d}-checkpoint.pth'
             # If accuracy >= the max value of all current 'acc' in saved_checkpoint, append
-            if acc >= max([x['acc'] for x in saved_checkpoint]):
+            if test_accuracy_epoch >= max([x['acc'] for x in saved_checkpoint]):
                 # Save model state dict
                 total_model_state_dict = {
-                    'bpm': model_bpm.state_dict(),
-                    'feature': model_feature.state_dict(),
-                    'classifier': model_classifier.state_dict(),
-                    'wandb_config': config,
+                    'model_bpm.state_dict': model_bpm.state_dict(),
+                    'model_feature.state_dict': model_feature.state_dict(),
+                    'model_classifier.state_dict': model_classifier.state_dict(),
+                    'wandb_config': dict(config),  # Save the config used in this run
+                    'epoch': epoch + 1,
+                    'optimizer': optimizer.state_dict(),
+                    'scheduler': scheduler.state_dict(),
+                    'argparse_args': vars(args),
                 }
-                torch.save(total_model_state_dict, checkpoint_file_dir)
-                saved_checkpoint.append({'acc': acc, 'path': checkpoint_file_dir})
+                torch.save(total_model_state_dict, f=str(checkpoint_file_dir))
+                saved_checkpoint.append({'acc': test_accuracy_epoch, 'path': checkpoint_file_dir})
                 # If the length of saved_checkpoint > save_total_limit, remove the one with the smallest 'acc'
-                if len(saved_checkpoint) > save_total_limit:
+                if len(saved_checkpoint) > args.save_total_limit:
                     to_delete = min(saved_checkpoint, key=lambda x: x['acc'])
                     if to_delete['path'] is not None:
                         to_delete['path'].unlink()  # Delete the file
@@ -285,30 +299,20 @@ def build_transforms(bpm_color, device=None):
 
 
 def build_dataset(data_name, batch_size):
-    data2path = {
-        'mnist': "./data/mnist",
-        'fashion_mnist': "./data/fashion_mnist",
-        'cifar10': "./data/cifar10",
-        'imagenette': './data/imagenette',
+    dataset_dir = str(download_and_extract(data_name))
 
-        'my_mnist': './data/my_mnist',
-        'my_fashion_mnist': './data/my_fashion_mnist',
-        'my_cifar10': './data/my_cifar10',
-        'my_imagenette': './data/my_imagenette',
-    }
-
-    ds = load_from_disk(data2path[data_name]).with_format("torch")  # or .with_format("torch", device=device)
+    ds = load_from_disk(dataset_dir).with_format("torch")  # or .with_format("torch", device=device)
     ds_train = ds['train'].select_columns(['image', 'feature_finetune_vit', 'label'])  # 'image', 'label', 'feature_finetune_vit', 'feature_pretrain_vit', 'logit_finetune_vit'
     ds_test = ds['test'].select_columns(['image', 'feature_finetune_vit', 'label'])  # 'image', 'label', 'feature_finetune_vit', 'feature_pretrain_vit', 'logit_finetune_vit'
     if args.small_toy:
-        ds_train = ds_train.select(range(args.batch_size*3+1))
-        ds_test = ds_test.select(range(args.batch_size*3+1))
+        ds_train = ds_train.select(range(args.batch_size*5))
+        ds_test = ds_test.select(range(args.batch_size*5))
 
     train_dataloader = DataLoader(
         ds_train,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=NUM_WORKERS,
+        num_workers=args.num_cpu_worker,
         pin_memory=True,
     )
 
@@ -316,10 +320,11 @@ def build_dataset(data_name, batch_size):
         ds_test,
         batch_size=batch_size,
         shuffle=False,  # don't need to shuffle test data
-        num_workers=NUM_WORKERS,
+        num_workers=args.num_cpu_worker,
         pin_memory=True,
     )
     data_info = {
+        'data_name': data_name,
         'batch_size': batch_size,
         'train_samples': len(ds_train),
         'test_samples': len(ds_test),
@@ -331,7 +336,7 @@ def build_dataset(data_name, batch_size):
 
 
 # %%  Step 4: Activate sweep agents
-wandb.agent(sweep_id, train, count=5)
+wandb.agent(sweep_id, train, count=2)
 
 wandb.finish()
 

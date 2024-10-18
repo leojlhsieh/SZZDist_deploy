@@ -10,8 +10,13 @@ uv pip install --no-cache-dir --upgrade wandb
 uv pip install --no-cache-dir --upgrade numpy matplotlib tqdm
 uv pip install --no-cache-dir --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 uv pip install --no-cache-dir --upgrade datasets
+uv pip install --no-cache-dir --upgrade torcheval
+
+
 
 #### Daily use ####
+sacctmgr show qos
+
 module load gcc/13.2.0 python/3.11.7 tmux/3.4 cuda/12.4.1
 source /scratch/jlhsieh/leo_scratch/venv-leo/bin/activate
 
@@ -53,3 +58,19 @@ cp -pi ~/TextFile.txt /scratch/jlhsieh/
     -j : Work on .tar.bz2 (bzip2) file format
     -J (capital J) : Work on .tar.xz (xz) file format (see how to extract tar.xz files in Linux for more details)
     -v : Verbose output i.e. show progress on screen
+
+
+
+
+
+
+
+      Name   Priority  GraceTime    Preempt   PreemptExemptTime PreemptMode                    Flags UsageThres UsageFactor       GrpTRES   GrpTRESMins        MaxTRES      MaxWall     MaxTRESPU MaxJobsPU MaxSubmitPU     MaxTRESPA       MaxTRESRunMinsPA       MaxTRESRunMinsPU MaxJobsPA MaxSubmitPA       MinTRES
+---------- ---------- ---------- ---------- ------------------- ----------- ------------------------ ---------- ----------- ------------- -------------  -------------  ----------- ------------- --------- ----------- ------------- ---------------------- ---------------------- --------- ----------- -------------
+    normal          0   00:00:00                                    cluster                                        1.000000
+      kuma      10000   00:00:00                                    cluster              DenyOnLimit               1.000000                                              1-00:00:00
+   disable          0   00:00:00                                    cluster              DenyOnLimit               1.000000         cpu=0                gres/gpu=0,n+     00:00:00 cpu=0,gres/g+
+    scitas     100000   00:00:00       kuma                         cluster  DenyOnLimit,OverPartQOS               1.000000                                             15-00:00:00
+     build      10000   00:00:00                                    cluster              DenyOnLimit               0.000000                              cpu=16,gres/+     04:00:00                       1           1
+     debug      10000   00:00:00                                    cluster              DenyOnLimit               0.000000                                 gres/gpu=2     01:00:00                       1           5
+      long        100   00:00:00                                    cluster              DenyOnLimit               1.000000                                              7-00:00:00                                                                                                                          gres/gpu=1

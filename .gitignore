@@ -2,8 +2,8 @@
 !/data/.gitkeep
 /checkpoint/*
 !/checkpoint/.gitkeep
-/edu
-
+/edu/
+/wandb/
 
 
 

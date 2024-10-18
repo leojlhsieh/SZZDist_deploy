@@ -364,7 +364,7 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
     if bpm_color == 'gray' and bpm_mode == 'bpm' and bpm_parallel == 1:
         model_bpm = build_model_bpm(bpm_depth, bpm_width, device=device)
     else:
-        raise NotImplementedError(f"{bpm_color=}, {bpm_mode=}, {bpm_parallel=}")
+        raise NotImplementedError(f"{bpm_color=}, {bpm_mode=}, {bpm_parallel=}\n'gray', 'rgb'\n'bpm', 'CNNpatch-bpm', 'fft-bpm', 'nothing'\n1, 3")
 
     # Building feature model and class model
     if model_feature == 'maxpool30-ReLU':
@@ -415,7 +415,7 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
                 return self.linear_layer(x)
         model_classifier = Feature2Class().to(device)
     else:
-        raise NotImplementedError(f"{model_feature=}")
+        raise NotImplementedError(f"{model_feature=}\n'maxpool30-ReLU', 'CNN-ReLU', 'rearange', 'nothing'")
 
     return model_bpm, model_feature, model_classifier
 

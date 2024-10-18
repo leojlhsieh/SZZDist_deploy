@@ -3,7 +3,7 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --mem 8G
-#SBATCH --time 0:09:00
+#SBATCH --time 0:59:00
 #SBATCH --gpus 1
 #SBATCH --qos kuma
 #SBATCH --partition h100

@@ -4,6 +4,8 @@ import wandb
 import torch.optim as optim
 import torch.nn.functional as F
 from torchvision import datasets, transforms
+import pathlib
+import time
 import os
 import random
 import numpy as np
@@ -29,6 +31,8 @@ parser.add_argument("--epochs", type=int, default=50)
 parser.add_argument("--batch_size", type=int, default=60)
 parser.add_argument("--small_toy", action="store_true", default=True, help="Use a small toy dataset for debugging")
 parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+parser.add_argument("--save_total_limit", type=int, default=4)
+
 args = parser.parse_args()
 print(f'{args = }')
 
@@ -51,7 +55,7 @@ print(f'{device = }')
 machine_name = args.machine_name
 time_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 wanb_name = f'{machine_name}--{time_stamp}'
-print(f'{wanb_name = }')
+print(f'{wanb_name = }')  # Example: "musta_3090Ti--2024-10-17_15-09-58"
 
 NUM_WORKERS = os.cpu_count()
 NUM_WORKERS = 0
@@ -119,7 +123,7 @@ def train(config=None):
 
         image_transform = build_transforms(config.bpm_color, device=device)
         tarin_loader, test_loader, data_info = build_dataset(config.data_name, config.batch_size)
-        model_bpm, model_feature, model_class = build_model(config.bpm_color, config.bpm_mode, config.bpm_depth, config.bpm_width, config.bpm_parallel, config.model_feature, device=device)
+        model_bpm, model_feature, model_classifier = build_model(config.bpm_color, config.bpm_mode, config.bpm_depth, config.bpm_width, config.bpm_parallel, config.model_feature, device=device)
         pprint(data_info)
 
         loss_fn_1 = nn.HuberLoss().to(device)
@@ -127,7 +131,7 @@ def train(config=None):
         optimizer = torch.optim.AdamW([
             {'params': model_bpm.parameters(), 'lr': config.lr_bpm},
             {'params': model_feature.parameters(), 'lr': config.lr_feature},
-            {'params': model_class.parameters(), 'lr': config.lr_class},
+            {'params': model_classifier.parameters(), 'lr': config.lr_class},
         ], weight_decay=0.05)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
@@ -139,13 +143,15 @@ def train(config=None):
             div_factor=8,
             final_div_factor=256)
 
+        saved_checkpoint = [{'acc': 0.00, 'path': None},]
+        wandb.watch((model_bpm, model_feature, model_classifier), log_freq=data_info['train_batches'])
+        time_start = time.time()
         for epoch in range(config.epochs):
             print(f"---------- Epoch: {epoch}----------")
-            # Training
-            wandb.watch(model_bpm)
+            # ===== Training =====
             model_bpm.train()
             model_feature.train()
-            model_class.train()
+            model_classifier.train()
             train_loss_1_epoch = 0
             train_loss_2_epoch = 0
             train_loss_total_epoch = 0
@@ -158,7 +164,7 @@ def train(config=None):
                 # Forward pass
                 camera_pred = model_bpm(image)
                 feature_pred = model_feature(camera_pred)
-                logit_pred = model_class(feature_pred)
+                logit_pred = model_classifier(feature_pred)
 
                 loss_1 = loss_fn_1(feature_pred, feature)
                 loss_2 = loss_fn_2(logit_pred, label)  # For Pytorch CrossEntropyLoss, the input is expected to contain raw. Do NOT apply softmax and argmax before passing it to the loss function.
@@ -167,6 +173,7 @@ def train(config=None):
                 train_loss_1_epoch += loss_1.item()
                 train_loss_2_epoch += loss_2.item()
                 train_loss_total_epoch += loss_total.item()
+
                 # Backward pass
                 optimizer.zero_grad()
                 loss_total.backward()
@@ -174,18 +181,24 @@ def train(config=None):
                 # Step with optimizer
                 optimizer.step()
                 scheduler.step()  # For OneCycleLR, step() should be invoked after each batch instead of after each epoch
+
+                if batch % 75 == 0:
+                    wandb.log({"every_75_train_batches/loss_1": loss_1.item()})
+                    wandb.log({"every_75_train_batches/loss_2": loss_2.item()})
+                    wandb.log({"every_75_train_batches/loss_total": loss_total.item()})
+
             train_loss_1_epoch /= len(tarin_loader)
             train_loss_2_epoch /= len(tarin_loader)
             train_loss_total_epoch /= len(tarin_loader)
-            print(f"Train Loss 1: {train_loss_1_epoch:.5f}, Train Loss 2: {train_loss_2_epoch:.5f}, Train Loss Total: {train_loss_total_epoch:.5f}")
+            print(f"TRAIN loss 1: {train_loss_1_epoch:.5f}, loss 2: {train_loss_2_epoch:.5f}, loss total: {train_loss_total_epoch:.5f}")
             wandb.log({"epoch": epoch, "train/loss_1": train_loss_1_epoch})
             wandb.log({"epoch": epoch, "train/loss_2": train_loss_2_epoch})
             wandb.log({"epoch": epoch, "train/loss_total": train_loss_total_epoch})
 
-            # Testing
+            # ===== Testing =====
             model_bpm.eval()
             model_feature.eval()
-            model_class.eval()
+            model_classifier.eval()
             test_loss_1_epoch = 0
             test_loss_2_epoch = 0
             test_loss_total_epoch = 0
@@ -201,7 +214,7 @@ def train(config=None):
                     # Forward pass
                     camera_pred = model_bpm(image)
                     feature_pred = model_feature(camera_pred)
-                    logit_pred = model_class(feature_pred)
+                    logit_pred = model_classifier(feature_pred)
                     label_pred = logit_pred.argmax(dim=1)
 
                     loss_1 = loss_fn_1(feature_pred, feature)
@@ -213,16 +226,41 @@ def train(config=None):
                     test_loss_2_epoch += loss_2.item()
                     test_loss_total_epoch += loss_total.item()
                     test_accuracy_epoch += test_accuracy.item()
-                test_loss_1_epoch /= len(test_loader)
-                test_loss_2_epoch /= len(test_loader)
-                test_loss_total_epoch /= len(test_loader)
-                test_accuracy_epoch /= len(test_loader)
-                print(f"Test Loss 1: {test_loss_1_epoch:.5f}, Test Loss 2: {test_loss_2_epoch:.5f}, Test Loss Total: {test_loss_total_epoch:.5f}")
-                print(f"Test Accuracy: {test_accuracy_epoch:.5f}")
-                wandb.log({"epoch": epoch, "test/loss_1": test_loss_1_epoch})
-                wandb.log({"epoch": epoch, "test/loss_2": test_loss_2_epoch})
-                wandb.log({"epoch": epoch, "test/loss_total": test_loss_total_epoch})
-                wandb.log({"epoch": epoch, "test/accuracy": test_accuracy_epoch})
+            test_loss_1_epoch /= len(test_loader)
+            test_loss_2_epoch /= len(test_loader)
+            test_loss_total_epoch /= len(test_loader)
+            test_accuracy_epoch /= len(test_loader)
+            print(f"TEST loss 1: {test_loss_1_epoch:.5f}, loss 2: {test_loss_2_epoch:.5f}, loss total: {test_loss_total_epoch:.5f}")
+            print(f"TEST accuracy: {test_accuracy_epoch:.5f}")
+            wandb.log({"epoch": epoch, "test/loss_1": test_loss_1_epoch})
+            wandb.log({"epoch": epoch, "test/loss_2": test_loss_2_epoch})
+            wandb.log({"epoch": epoch, "test/loss_total": test_loss_total_epoch})
+            wandb.log({"epoch": epoch, "test/accuracy": test_accuracy_epoch})
+            runtime_minute = (time.time() - start_time) / 60.0
+            wandb.log({"epoch": epoch, "runtime/minute": runtime_minute})
+            print(f"One epoch runt {runtime_minute:.2f} minutes, train {data_info['train_batches']} batches, test {data_info['test_batches']} batches")
+
+            # ===== Save model checkpoint =====
+            checkpoint_dir = pathlib.Path(__file__).parent / 'checkpoint' / f'{wanb_name}'
+            checkpoint_dir.mkdir(exist_ok=True, parents=True)
+            checkpoint_file_dir = checkpoint_dir / f'acc{acc:.5f}-checkpoint.pth'
+            # If accuracy >= the max value of all current 'acc' in saved_checkpoint, append
+            if acc >= max([x['acc'] for x in saved_checkpoint]):
+                # Save model state dict
+                total_model_state_dict = {
+                    'bpm': model_bpm.state_dict(),
+                    'feature': model_feature.state_dict(),
+                    'classifier': model_classifier.state_dict(),
+                    'wandb_config': config,
+                }
+                torch.save(total_model_state_dict, checkpoint_file_dir)
+                saved_checkpoint.append({'acc': acc, 'path': checkpoint_file_dir})
+                # If the length of saved_checkpoint > save_total_limit, remove the one with the smallest 'acc'
+                if len(saved_checkpoint) > save_total_limit:
+                    to_delete = min(saved_checkpoint, key=lambda x: x['acc'])
+                    if to_delete['path'] is not None:
+                        to_delete['path'].unlink()  # Delete the file
+                    saved_checkpoint.remove(to_delete)
         print("All epochs completed!")
 
 
@@ -292,17 +330,10 @@ def build_dataset(data_name, batch_size):
     return train_dataloader, test_dataloader, data_info
 
 
-
-
-
-
-
 # %%  Step 4: Activate sweep agents
 wandb.agent(sweep_id, train, count=5)
 
 wandb.finish()
-
-
 
 
 # %%

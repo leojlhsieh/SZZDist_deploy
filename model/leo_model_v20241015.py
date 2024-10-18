@@ -413,11 +413,11 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 return self.linear_layer(x)
-        model_class = Feature2Class().to(device)
+        model_classifier = Feature2Class().to(device)
     else:
         raise NotImplementedError(f"{model_feature=}")
 
-    return model_bpm, model_feature, model_class
+    return model_bpm, model_feature, model_classifier
 
 
 if __name__ == '__main__':

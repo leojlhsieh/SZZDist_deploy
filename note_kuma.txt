@@ -22,7 +22,8 @@ source /scratch/jlhsieh/leo_scratch/venv-leo/bin/activate
 cd /scratch/jlhsieh/leo_scratch/leo-code-space
 sbatch /scratch/jlhsieh/leo_scratch/leo-code-space/job_leo.sh 
 Squeue
-
+scancel JOBID
+Sjob JOBID
 
 
 git clone https://github.com/leojlhsieh/SZZDist_deploy.git

@@ -25,7 +25,7 @@ from torcheval.metrics.functional import multiclass_accuracy
 
 # Get the arguments
 parser = ArgumentParser()
-parser.add_argument("--machine_name", type=str, default='musta_3090Ti', choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_H100', 'kuma_H100'])  # , required=True)
+parser.add_argument("--machine_name", type=str, default='musta_3090Ti', choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_L40S', 'kuma_H100'])  # , required=True)
 parser.add_argument("--data_name", type=str, default='my_cifar10', choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'])  # , required=True)
 parser.add_argument("--sweep_id", type=str, default='hnlhb6il')  # If None, create a new sweep. Otherwise, use the existing sweep.
 parser.add_argument("--epochs", type=int, default=50)

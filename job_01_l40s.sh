@@ -3,7 +3,7 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --mem 8G
-#SBATCH --time 0:59:00
+#SBATCH --time 0:09:00
 #SBATCH --gpus 1
 #SBATCH --qos kuma
 #SBATCH --partition l40s
@@ -15,5 +15,5 @@ echo "leo leo"
 echo "======================================="
 python /scratch/jlhsieh/leo_scratch/SZZDist_deploy/tool/check_gpu.py
 echo "======================================="
-python /scratch/jlhsieh/leo_scratch/SZZDist_deploy/leo_wandb_sweep.py --machine_name kuma_l40s
+python /scratch/jlhsieh/leo_scratch/SZZDist_deploy/leo_wandb_sweep.py --machine_name kuma_L40S
 

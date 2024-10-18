@@ -4,6 +4,6 @@
 !/checkpoint/.gitkeep
 /edu/
 /wandb/
-
+/slurm-*
 
 

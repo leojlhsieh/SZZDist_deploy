@@ -6,6 +6,6 @@ module list
 
 
 cd /scratch/jlhsieh/leo_scratch/SZZDist_deploy
-sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_kuma_h100.sh
-sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_kuma_l40s.sh
+sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_01_l40s.sh
+sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_02_h100.sh
 Squeue

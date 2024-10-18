@@ -336,7 +336,7 @@ def build_dataset(data_name, batch_size):
 
 
 # %%  Step 4: Activate sweep agents
-wandb.agent(sweep_id, train, count=2)
+wandb.agent(sweep_id, train, count=1)
 
 wandb.finish()
 

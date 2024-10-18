@@ -8,10 +8,9 @@ pip install --no-cache-dir --upgrade pip
 pip install --no-cache-dir --upgrade uv
 uv pip install --no-cache-dir --upgrade wandb
 uv pip install --no-cache-dir --upgrade numpy matplotlib tqdm
-uv pip install --no-cache-dir --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+uv pip install --no-cache-dir --upgrade torch torchvision torchaudio
 uv pip install --no-cache-dir --upgrade datasets
 uv pip install --no-cache-dir --upgrade torcheval
-
 
 
 #### Daily use ####

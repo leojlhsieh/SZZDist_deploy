@@ -115,7 +115,7 @@ else:
 sweep_id = f'{args.entity_name}/{args.project_name}/{sweep_id}'
 print(f'{sweep_id = }')
 
-exit()
+
 # %%  Step 3: Define your machine learning code
 def train(config=None):
     print(f'def train(config=None): {device = }')

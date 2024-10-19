@@ -51,7 +51,8 @@ def download_and_extract(data_name: str) -> None:
     dataset_dir = data_dir / data_name
     dataset_file_dir = data_dir / f'{data_name}.tar.gz'
     if not dataset_dir.exists():
-        download_file(url, dataset_file_dir)
+        if not dataset_file_dir.exists():
+            download_file(url, dataset_file_dir)
         extract_tar_gz(dataset_file_dir, data_dir)
         dataset_file_dir.unlink()  # Delete the downloaded .tar.gz file
 

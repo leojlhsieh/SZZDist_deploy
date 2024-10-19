@@ -6,7 +6,7 @@
 #SBATCH --time 1:25:00
 #SBATCH --gpus 1
 #SBATCH --qos kuma
-#SBATCH --partition H100
+#SBATCH --partition h100
 # partition ['h100' or 'l40s']
 
 # time 4:10:00 for 15 epochs of 128 batch size on L40S

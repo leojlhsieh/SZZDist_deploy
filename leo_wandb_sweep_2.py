@@ -1,7 +1,27 @@
 # %%
-from pprint import pprint, pformat
 import wandb
+import torch.optim as optim
+import torch.nn.functional as F
+from torchvision import datasets, transforms
+import pathlib
+import time
+import os
+import random
+import numpy as np
+import torch
+import torch.nn as nn
+from torchvision.transforms import v2
+from tqdm.auto import tqdm
+from datetime import datetime
+from tool.check_gpu import check_gpu
+from tool.download_data import download_and_extract
+from datasets import load_from_disk  # Huggingface datasets  # pip install datasets
+from torch.utils.data import Dataset  # For custom dataset of PyTorch
+from torch.utils.data import DataLoader  # Easy to get datasets in batches, shuffle, multiprocess, etc.
 from argparse import ArgumentParser
+from model.leo_model_v20241015 import build_model
+from torcheval.metrics.functional import multiclass_accuracy
+from pprint import pprint, pformat
 import logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -32,7 +52,6 @@ args = parser.parse_args()
 logging.debug(f'{pformat(vars(args), sort_dicts=False)}')
 
 
-
 # %%
 
 # Ensure deterministic behavior
@@ -46,10 +65,10 @@ torch.cuda.manual_seed_all(hash("so runs are repeatable") % 2**32 - 1)
 # Device configuration
 if args.machine_name == 'musta_2080Ti':
     device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    os.environ["CUDA_VISIBLE_DEVICES"]="1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 else:
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    os.environ["CUDA_VISIBLE_DEVICES"]="0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 if args.machine_name not in ['kuma_L40S', 'kuma_H100']:
     args.checkpoint_dir = None
 
@@ -195,11 +214,11 @@ def train(config=None):
             wandb.log({"epoch": epoch, "train/loss_1": train_loss_1_epoch})
             wandb.log({"epoch": epoch, "train/loss_2": train_loss_2_epoch})
             wandb.log({"epoch": epoch, "train/loss_total": train_loss_total_epoch})
-            for name, data in model_bpm.named_parameters():            
+            for name, data in model_bpm.named_parameters():
                 wandb.log({"epoch": epoch, f"parameters/model_bpm.{name}": wandb.Histogram(data.detach().cpu().numpy())})
-            for name, data in model_feature.named_parameters():            
+            for name, data in model_feature.named_parameters():
                 wandb.log({"epoch": epoch, f"parameters/model_feature.{name}": wandb.Histogram(data.detach().cpu().numpy())})
-            for name, data in model_classifier.named_parameters():            
+            for name, data in model_classifier.named_parameters():
                 wandb.log({"epoch": epoch, f"parameters/model_classifier.{name}": wandb.Histogram(data.detach().cpu().numpy())})
 
             # ===== Testing =====

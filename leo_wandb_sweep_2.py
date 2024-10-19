@@ -50,14 +50,17 @@ if args.machine_name == 'musta_2080Ti':
 else:
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     os.environ["CUDA_VISIBLE_DEVICES"]="0"
+if args.machine_name not in ['kuma_L40S', 'kuma_H100']:
+    args.checkpoint_dir = None
+
 check_gpu()
-print(f'{device = }')
-print(f"{os.cpu_count() = }, {args.num_cpu_worker = }")
+logging.info(f'{device = }')
+logging.info(f"{os.cpu_count() = }, {args.num_cpu_worker = }")
 
 machine_name = args.machine_name
 time_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 wanb_name = f'{machine_name}--{time_stamp}'
-print(f'{wanb_name = }')  # Example: "musta_3090Ti--2024-10-17_15-09-58"
+logging.info(f'{wanb_name = }')  # Example: "musta_3090Ti--2024-10-17_15-09-58"
 
 
 # %%  Step 1️: Define a sweep configuration
@@ -96,7 +99,7 @@ if args.sweep_id is None:
                        'model_feature': {'value': 'maxpool30-ReLU'},  # 'maxpool30-ReLU', 'CNN-ReLU', 'rearange', 'nothing'
                        }
     }
-    pprint(sweep_config, sort_dicts=False)
+    logging.info(pformat(sweep_config, sort_dicts=False))
 
 
 # %%  Step 2️: Initialize the Sweep
@@ -107,12 +110,12 @@ if args.sweep_id is None:
 else:
     sweep_id = args.sweep_id
 sweep_id = f'{args.entity_name}/{args.project_name}/{sweep_id}'
-print(f'{sweep_id = }')
+logging.info(f'{sweep_id = }')
 
 
 # %%  Step 3: Define your machine learning code
 def train(config=None):
-    print(f'def train(config=None): {device = }')
+    logging.info(f'def train(config=None): {device = }')
     # Initialize a new wandb run
     with wandb.init(config=config, name=wanb_name):
         # If called by wandb.agent, as below,
@@ -123,7 +126,7 @@ def train(config=None):
         image_transform = build_transforms(config['bpm_color'], device=device)
         tarin_loader, test_loader, data_info = build_dataset(config['data_name'], config['batch_size'])
         model_bpm, model_feature, model_classifier = build_model(config['bpm_color'], config['bpm_mode'], config['bpm_depth'], config['bpm_width'], config['bpm_parallel'], config['model_feature'], device=device)
-        pprint(data_info, sort_dicts=False)
+        logging.info(pformat(data_info, sort_dicts=False))
 
         loss_fn_1 = nn.HuberLoss().to(device)
         loss_fn_2 = nn.CrossEntropyLoss().to(device)
@@ -145,7 +148,7 @@ def train(config=None):
         saved_checkpoint = [{'acc': 0.00, 'path': None},]
         for epoch in range(config.epochs):
             time_start = time.time()
-            print(f"---------- Epoch: {epoch}----------")
+            logging.info(f"---------- Epoch: {epoch}----------")
             # ===== Training =====
             model_bpm.train()
             model_feature.train()
@@ -188,7 +191,7 @@ def train(config=None):
             train_loss_1_epoch /= len(tarin_loader)
             train_loss_2_epoch /= len(tarin_loader)
             train_loss_total_epoch /= len(tarin_loader)
-            print(f"TRAIN loss 1: {train_loss_1_epoch:.5f}, loss 2: {train_loss_2_epoch:.5f}, loss total: {train_loss_total_epoch:.5f}")
+            logging.info(f"TRAIN loss 1: {train_loss_1_epoch:.5f}, loss 2: {train_loss_2_epoch:.5f}, loss total: {train_loss_total_epoch:.5f}")
             wandb.log({"epoch": epoch, "train/loss_1": train_loss_1_epoch})
             wandb.log({"epoch": epoch, "train/loss_2": train_loss_2_epoch})
             wandb.log({"epoch": epoch, "train/loss_total": train_loss_total_epoch})
@@ -234,18 +237,21 @@ def train(config=None):
             test_loss_2_epoch /= len(test_loader)
             test_loss_total_epoch /= len(test_loader)
             test_accuracy_epoch /= len(test_loader)
-            print(f"TEST loss 1: {test_loss_1_epoch:.5f}, loss 2: {test_loss_2_epoch:.5f}, loss total: {test_loss_total_epoch:.5f}")
-            print(f"TEST accuracy: {test_accuracy_epoch:.5f}")
+            logging.info(f"TEST loss 1: {test_loss_1_epoch:.5f}, loss 2: {test_loss_2_epoch:.5f}, loss total: {test_loss_total_epoch:.5f}")
+            logging.info(f"TEST accuracy: {test_accuracy_epoch:.5f}")
             wandb.log({"epoch": epoch, "test/loss_1": test_loss_1_epoch})
             wandb.log({"epoch": epoch, "test/loss_2": test_loss_2_epoch})
             wandb.log({"epoch": epoch, "test/loss_total": test_loss_total_epoch})
             wandb.log({"epoch": epoch, "test/accuracy": test_accuracy_epoch})
             runtime_minute = (time.time() - time_start) / 60.0
             wandb.log({"epoch": epoch, "runtime/minute": runtime_minute})
-            print(f"One epoch runt {runtime_minute:.2f} minutes, train {data_info['train_batches']} batches, test {data_info['test_batches']} batches")
+            logging.info(f"One epoch runt {runtime_minute:.2f} minutes, train {data_info['train_batches']} batches, test {data_info['test_batches']} batches")
 
             # ===== Save model checkpoint =====
-            checkpoint_dir = pathlib.Path(__file__).parent / 'checkpoint' / f'{wanb_name}'
+            if args.checkpoint_dir is not None:
+                checkpoint_dir = pathlib.Path(args.checkpoint_dir) / f'{wanb_name}'
+            else:
+                checkpoint_dir = pathlib.Path(__file__).parent / 'checkpoint' / f'{wanb_name}'
             checkpoint_dir.mkdir(exist_ok=True, parents=True)
             checkpoint_file_dir = checkpoint_dir / f'acc{test_accuracy_epoch:.5f}-epoch{epoch:03d}-checkpoint.pth'
             # If accuracy >= the max value of all current 'acc' in saved_checkpoint, append
@@ -269,7 +275,7 @@ def train(config=None):
                     if to_delete['path'] is not None:
                         to_delete['path'].unlink()  # Delete the file
                     saved_checkpoint.remove(to_delete)
-        print("All epochs completed!")
+        logging.info("All epochs completed!")
 
 
 def build_transforms(bpm_color, device=None):

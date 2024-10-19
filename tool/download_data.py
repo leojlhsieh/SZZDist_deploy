@@ -15,11 +15,12 @@ def download_file(url, destination='.'):
     """Download a file from a URL to a specified destination."""
     try:
         # Download the file from the URL
-        print(f"Downloading file from: {url}")
+        logging.info(f"Downloading file from: {url}")
+
         urllib.request.urlretrieve(url, destination)
-        print(f"Download successful") 
+        logging.info(f"Download successful!")
     except Exception as e:
-        print(f"Error downloading file: {e}")
+        logging.error(f"Error downloading file: {e}")
 
 
 def extract_tar_gz(file_path, extract_path='.'):
@@ -27,9 +28,9 @@ def extract_tar_gz(file_path, extract_path='.'):
     try:
         with tarfile.open(file_path, 'r') as tar:
             tar.extractall(path=extract_path)  #==== Extract all contents to the specified directory
-        print(f"Extracted files to: {extract_path}")
+        logging.info(f"Extracted files to: {extract_path}")
     except tarfile.TarError as e:
-        print(f"Error extracting file: {e}")
+        logging.error(f"Error extracting file: {e}")
 
 
 def download_and_extract(data_name: str) -> None:
@@ -66,5 +67,4 @@ if __name__ == '__main__':
     import time
     start_time = time.time()
     download_and_extract(args.data_name)
-    logging.info(f"Download and extract success!")
     logging.info(f"--- {time.time() - start_time} seconds ---")

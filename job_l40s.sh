@@ -16,6 +16,6 @@ nvcc --version
 echo "======================================="
 python ./tool/check_gpu.py
 echo "======================================="
-python ./leo_wandb_sweep_2.py --machine_name kuma_L40S --small_toy
+python ./leo_wandb_sweep_2.py --machine_name kuma_L40S --small_toy --sweep_id hnlhb6il
 echo "==== Done ==================================="
 

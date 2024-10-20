@@ -10,12 +10,13 @@
  c:/Users/musta/Documents/leo-code-space/SZZDist_deploy/leo_wandb_sweep_4.py `
     --sweep_id=8li9kx8l `
     --machine_name=musta_3090Ti `
-    --data_name=my_cifar10 `
+    --small_toy=10 `
+    --loss_ratio=0.8 `
     --epochs=4 `
-    --small_toy=3 `
-    --batch_size=64 `
+    --data_name=my_cifar10 `
+    --batch_size=4 `
     --bpm_depth=8 `
-    --bpm_width=600 `
+    --bpm_width=1200 `
 
 # choices=[1, 2, 3, 4, 5, 6, 7, 8]
 # choices=[75, 150, 300, 600, 1200])

@@ -1,16 +1,21 @@
 # %%
-from argparse import ArgumentParser
-import time
-import logging
+def calculate_factors(n):
+    """Return a list of factors of the given integer n."""
+    factors = []
+    for i in range(1, n + 1):
+        if n % i == 0:  # Check if i is a factor of n
+            factors.append(i)
+    return factors
 
-parser = ArgumentParser()
-parser.add_argument('--a', type=str, default='world')
-parser.add_argument('--b', type=int, default=0)
-args = parser.parse_args()
+def print_factor_pairs(n):
+    """Print all pairs (a, b) such that a * b = n."""
+    factors = calculate_factors(n)
+    print(f"All pairs (a, b) such that a * b = {n}:")
+    for a in factors:
+        b = n // a
+        print(f"({a}, {b})")
 
-for _ in range(10):
-    print(f'print Hello {args.a} {args.b}')
-    logging.info(f'log info Hello {args.a} {args.b}')
-    time.sleep(1)
-
-
+# Example usage
+N = 150//2
+print_factor_pairs(N)
+# %%

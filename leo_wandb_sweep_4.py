@@ -56,7 +56,7 @@ parser.add_argument("--epochs", type=int, default=15)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--loss_fn_1", type=str, default='HuberLoss')
 parser.add_argument("--loss_fn_2", type=str, default='CrossEntropyLoss')
-parser.add_argument("--loss_ratio", type=float, default=0.5, help="loss_total = loss_ratio * loss_fn_1 + (1 - loss_ratio) * loss_fn_2")
+parser.add_argument("--loss_ratio", type=float, default=0.8, help="loss_total = loss_ratio * loss_fn_1 + (1 - loss_ratio) * loss_fn_2")
 parser.add_argument("--lr_bpm", type=float, default=1e-03)
 parser.add_argument("--lr_feature", type=float, default=1e-03)
 parser.add_argument("--lr_class", type=float, default=1e-03)
@@ -325,6 +325,6 @@ def train_by_wandb():
 #   Step 4: Activate sweep agents
 wandb.agent(full_sweep_id, train_by_wandb, count=1)
 wandb.finish()
-logging.info("wandb agent completed!")
+logging.info("wandb.finish() completed!")
 
 # %%

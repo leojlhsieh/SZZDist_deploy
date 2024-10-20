@@ -380,9 +380,9 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
             def __init__(self):
                 super().__init__()
                 self.layer_stack = nn.Sequential(
-                    nn.MaxPool2d(kernel_size=300 // 28, stride=300 // 28),  # make output size batchx1x30x30
+                    nn.MaxPool2d(kernel_size=bpm_width // 25, stride=bpm_width // 25),  # make output size batchx1x25x25
                     nn.Flatten(),
-                    nn.Linear(in_features=900, out_features=768),
+                    nn.Linear(in_features=25*25, out_features=768),  # 75=25*3, 150=25*6, 300=25*12, 600=25*24, 1200=25*48
                     nn.ReLU(),
                 )
 

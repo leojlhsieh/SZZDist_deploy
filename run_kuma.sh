@@ -7,19 +7,16 @@ module list
 
 cd /scratch/jlhsieh/leo_scratch/SZZDist_deploy
 sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_01_l40s.sh
-sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_02_h100.sh
+sbatch --qos=kuma --nodes=1  --ntasks=1 --cpus-per-task=1 --gpus=1 --mem=4G --time=0:30:00 --partition=h100 /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_02_h100.sh
 Squeue
 
 
-Sinteract -gpus= gpu:1 -c2 -t 0:10:00 -m 4G -p l40s -q kuma
-Sinteract -gpus=1 -c2 -t 0:10:00 -m 4G -p l40s -q kuma
 
-
+git clone https://github.com/leojlhsieh/SZZDist_deploy.git
+git pull
 
 Sinteract --qos=kuma --nodes=1  --ntasks=1 --cpus-per-task=1 --gpus=1 --mem=4G --time=0:30:00 --partition=h100
-
-
-Sinteract -c 1 -n 1 -t 00:30:00 -m 4G -p h100 -q kuma
+Sinteract -c 1 -n 1 -t 00:30:00 -m 6G -p h100 -q kuma
 usage: Sinteract [-c cores] [-n tasks] [-t time] [-m memory] [-p partition] [-a account] [-q qos] [-g resource] [-r reservation] [-s constraints]
 options:
   -c cores       cores per task (default: 1)
@@ -38,13 +35,31 @@ options:
 
 python play2.py --a=apple --b=99
 
-& C:/Users/musta/miniconda3/envs/leopy311/python.exe \
- python leo_wandb_sweep_4.py \
+
+
+
+
+
+# choices=[1, 2, 3, 4, 5, 6, 7, 8]
+# choices=[75, 150, 300, 600, 1200])
+# choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'])
+# choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_L40S', 'kuma_H100'])
+
+
+
+python.exe leo_wandb_sweep_4.py \
     --sweep_id=8li9kx8l \
-    --machine_name=musta_3090Ti `\
+    --machine_name=kuma_H100 \
+    --epochs=2 \
+    --loss_ratio=0.9 \
     --data_name=my_cifar10 \
-    --epochs=4 \
-    --small_toy=3 \
-    --batch_size=64 \
+    --small_toy=10 \
+    --batch_size=4 \
     --bpm_depth=8 \
-    --bpm_width=600 \
+    --bpm_width=1200 \
+
+# choices=[1, 2, 3, 4, 5, 6, 7, 8]
+# choices=[75, 150, 300, 600, 1200])
+# choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'])
+# choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_L40S', 'kuma_H100'])
+

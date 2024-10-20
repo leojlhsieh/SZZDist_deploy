@@ -6,8 +6,9 @@ module list
 
 
 cd /scratch/jlhsieh/leo_scratch/SZZDist_deploy
-sbatch /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_01_l40s.sh
-sbatch --qos=kuma --nodes=1  --ntasks=1 --cpus-per-task=1 --gpus=1 --mem=4G --time=0:30:00 --partition=h100 /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_02_h100.sh
+sbatch --mem=8G --time=0:15:00 --partition=h100  /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_leo.sh
+Sinteract -c 1 -n 1 -t 00:15:00 -m 8G -p h100 -q kuma
+
 Squeue
 
 
@@ -15,7 +16,7 @@ Squeue
 git clone https://github.com/leojlhsieh/SZZDist_deploy.git
 git pull
 
-Sinteract --qos=kuma --nodes=1  --ntasks=1 --cpus-per-task=1 --gpus=1 --mem=4G --time=0:30:00 --partition=h100
+
 Sinteract -c 1 -n 1 -t 00:30:00 -m 6G -p h100 -q kuma
 usage: Sinteract [-c cores] [-n tasks] [-t time] [-m memory] [-p partition] [-a account] [-q qos] [-g resource] [-r reservation] [-s constraints]
 options:
@@ -47,14 +48,14 @@ python play2.py --a=apple --b=99
 
 
 
-python.exe leo_wandb_sweep_4.py \
+python leo_wandb_sweep_4.py \
     --sweep_id=8li9kx8l \
     --machine_name=kuma_H100 \
     --epochs=2 \
     --loss_ratio=0.9 \
     --data_name=my_cifar10 \
     --small_toy=10 \
-    --batch_size=4 \
+    --batch_size=2 \
     --bpm_depth=8 \
     --bpm_width=1200 \
 

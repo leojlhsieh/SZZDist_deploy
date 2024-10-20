@@ -1,10 +1,4 @@
 # %%
-# Add parent directory to sys.path temporarily, so this file can be run directly as main
-from pathlib import Path
-import sys
-file = Path(__file__).resolve()
-sys.path.append(str(Path(file).resolve().parent.parent))
-
 import matplotlib.pyplot as plt
 from math import pi
 import numpy as np
@@ -284,19 +278,20 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
             self.field_in = field_in.to(device)
             self.DFR = DFR.to(device)
             self.super_gaussian = super_gaussian.to(device)
-            self.layer_sampling = layer_sampling  # int
+            self.layer_sampling = torch.tensor(layer_sampling).to(device)  # tensor(int)
+            self.bpm_depth = torch.tensor(bpm_depth).to(device)  # tensor(int)
 
             # SLM and BPM coordinate conversion
-            self.ny_nx_slm2bpm = (1, *ny_nx_slm2bpm)  # tuple for 'size' in nn.functional.interpolate,  its length has to match the number of spatial dimensions; input.dim() - 2.
-            self.pad_slm2bpm = pad_slm2bpm  # tuple
+            self.ny_nx_slm2bpm = (1, *ny_nx_slm2bpm)  # Must be tuple, for 'size' in nn.functional.interpolate,  its length has to match the number of spatial dimensions; input.dim() - 2.
+            self.pad_slm2bpm = pad_slm2bpm  # Must be  tuple
             self.system_modulation = system_modulation.to(device)
-            self.ny_nx_bpm2cam = ny_nx_bpm2cam  # tuple
-            self.crop_bpm2cam = crop_bpm2cam  # tuple
+            self.ny_nx_bpm2cam = ny_nx_bpm2cam  # Must be  tuple
+            self.crop_bpm2cam = crop_bpm2cam  # Must be tuple
             self.fast_range = fast_range.to(device)
-
+            pi_cuda = torch.tensor(pi, dtype=torch.float32, device=device)
             # Training parameters, 0 mean, pi variance
-            self.phase_scale = Parameter(pi * torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
-            self.phase_bias = Parameter(pi * torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
+            self.phase_scale = Parameter(pi_cuda * torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
+            self.phase_bias = Parameter(pi_cuda * torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
 
         def forward(self, input: torch.Tensor) -> torch.Tensor:
             # Prepare modulation at SLM
@@ -313,7 +308,7 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
             # batch, channel, height, width = u0.shape
             # propagation = torch.zeros((batch, channel, height, width, Nz_bpm), dtype=u0.dtype, device=u0.device)
             # propagation[:, :, :, :, step_count] = u0
-            for i in self.fast_range[:bpm_depth]:  # for i in range(bpm_depth) will be slow
+            for i in self.fast_range[:self.bpm_depth]:  # for i in range(bpm_depth) will be slow
                 # Step 1: Modrulation at illumination or mirror
                 u0 = u0 * self.system_modulation[i, :, :, :, :]
 
@@ -421,6 +416,12 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
 
 
 if __name__ == '__main__':
+    # Add parent directory to sys.path temporarily, so this file can be run directly as main
+    from pathlib import Path
+    import sys
+    file = Path(__file__).resolve()
+    sys.path.append(str(Path(file).resolve().parent.parent))
+
     check_gpu()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")

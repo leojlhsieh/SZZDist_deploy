@@ -42,10 +42,10 @@ ssh -L 8541:10.91.52.2:8541 -l jlhsieh kuma.hpc.epfl.ch -f -N
 #### NAS ####
 dbus-run-session -- bash
 gio mount smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
-gio list smb://intranet\;j  lhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
+gio list smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
 gio tree smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
 gio copy -pi smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh/SZZDist_teacher_20241002.tar ~/
-gio mount -u     smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
+gio mount -u smb://intranet\;jlhsieh@sti-nas1.rcp.epfl.ch/lapd/jlhsieh
 
 
 #### /scratch ####   Files older than 30 days are automatically removed without notice.

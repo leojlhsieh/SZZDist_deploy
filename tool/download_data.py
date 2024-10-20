@@ -2,14 +2,8 @@ import pathlib
 import urllib.request
 import tarfile
 from argparse import ArgumentParser
-
 import logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-    datefmt="%H:%M:%S",
-    # filename="log_leo.log",
-)
+
 
 def download_file(url, destination='.'):
     """Download a file from a URL to a specified destination."""

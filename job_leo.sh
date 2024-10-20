@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task 1
 #SBATCH --gpus 1
 #SBATCH --mem 8G
-#SBATCH --time 1:25:00
+#SBATCH --time 00:20:00
 #SBATCH --partition h100
 # partition ['h100' or 'l40s']
 
@@ -22,7 +22,7 @@ python /scratch/jlhsieh/leo_scratch/SZZDist_deploy/leo_wandb_sweep_4.py \
     --loss_ratio=0.9 \
     --data_name=my_cifar10 \
     --small_toy=10 \
-    --batch_size=32 \
+    --batch_size=8 \
     --bpm_depth=6 \
     --bpm_width=600 \
 

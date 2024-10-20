@@ -1,14 +1,16 @@
 # %%
-import torch
+from argparse import ArgumentParser
+import time
+import logging
 
-a = torch.randn(10, 10).cuda()
+parser = ArgumentParser()
+parser.add_argument('--a', type=str, default='world')
+parser.add_argument('--b', type=int, default=0)
+args = parser.parse_args()
 
-print(a.device, a.dtype, a.shape)
-
-b = torch.tensor(3.1).cuda()
-
-c = a[:b,:]
-
-print(c.device, c.dtype, c.shape)
+for _ in range(10):
+    print(f'print Hello {args.a} {args.b}')
+    logging.info(f'log info Hello {args.a} {args.b}')
+    time.sleep(1)
 
 

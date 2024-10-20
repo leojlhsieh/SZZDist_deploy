@@ -35,3 +35,16 @@ options:
                      Deneb/Eltanin: E5v2, E5v3
                      Fidis/Gacrux: E5v4, s6g1, mem128gb, mem192gb, mem256gb
 
+
+python play2.py --a=apple --b=99
+
+& C:/Users/musta/miniconda3/envs/leopy311/python.exe \
+ python leo_wandb_sweep_4.py \
+    --sweep_id=8li9kx8l \
+    --machine_name=musta_3090Ti `\
+    --data_name=my_cifar10 \
+    --epochs=4 \
+    --small_toy=3 \
+    --batch_size=64 \
+    --bpm_depth=8 \
+    --bpm_width=600 \

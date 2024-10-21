@@ -4,14 +4,17 @@ source /scratch/jlhsieh/leo_scratch/venv-leo/bin/activate
 module list
 
 cd /scratch/jlhsieh/leo_scratch/SZZDist_deploy
-sbatch --time=00:15:00 --mem=32G --partition=h100  /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_leo.sh
-Sinteract -c 1 -n 1 -t 00:15:00 -m 8G -p h100 -q kuma
-
+for i in {1..24}; do
+sbatch --time=00:01:00 --mem=8G --partition=h100  /scratch/jlhsieh/leo_scratch/SZZDist_deploy/job_leo.sh
+sleep 2
 Squeue
+done
+
 
 git clone https://github.com/leojlhsieh/SZZDist_deploy.git
 git pull
 
+Sinteract -c 1 -n 1 -t 00:15:00 -m 8G -p h100 -q kuma
 Sinteract -c 1 -n 1 -t 00:30:00 -m 6G -p h100 -q kuma
 usage: Sinteract [-c cores] [-n tasks] [-t time] [-m memory] [-p partition] [-a account] [-q qos] [-g resource] [-r reservation] [-s constraints]
 options:

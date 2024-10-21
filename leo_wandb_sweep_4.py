@@ -67,7 +67,7 @@ parser.add_argument("--bpm_mode", type=str, default='bpm', choices=['bpm', 'CNNp
 parser.add_argument("--bpm_depth", type=int, default=4, choices=[1, 2, 3, 4, 5, 6, 7, 8])
 parser.add_argument("--bpm_width", type=int, default=300, choices=[75, 150, 300, 600, 1200])
 parser.add_argument("--bpm_parallel", type=int, default=1)
-parser.add_argument("--model_feature", type=str, default='maxpool30-ReLU', choices=['maxpool30-ReLU', 'CNN-ReLU', 'rearange', 'nothing'])
+parser.add_argument("--model_feature", type=str, default='maxpool25-ReLU', choices=['maxpool25-ReLU', 'CNN-ReLU', 'rearange', 'nothing'])
 
 parser.add_argument("--small_toy", type=int, default=0, help="Use a small dataset of `small_toy` batches for debugging. 0 means full dataset")
 parser.add_argument("--verbose", action="store_true", default=False)

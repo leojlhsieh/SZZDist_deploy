@@ -75,7 +75,7 @@ keep_propagation = False
 # 'bpm_depth': {'value': 4},  # 1, 2, 3, 4, 5, 6, 7, 8
 # 'bpm_width': {'value': 300},  # 75, 150, 300, 600, 1200
 # 'bpm_parallel': {'value': 1},
-# 'model_feature': {'value': 'maxpool30-ReLU'},  # 'CNN-ReLU', 'nothing'
+# 'model_feature': {'value': 'maxpool25-ReLU'},  # 'CNN-ReLU', 'nothing'
 
 
 def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
@@ -362,7 +362,7 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
         raise NotImplementedError(f"{bpm_color=}, {bpm_mode=}, {bpm_parallel=}\n'gray', 'rgb'\n'bpm', 'CNNpatch-bpm', 'fft-bpm', 'nothing'\n1, 3")
 
     # Building feature model and class model
-    if model_feature == 'maxpool30-ReLU':
+    if model_feature == 'maxpool25-ReLU':
         pooling_number = bpm_width // 28  #
 
         class BPM2Feature(nn.Module):
@@ -410,7 +410,7 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
                 return self.linear_layer(x)
         model_classifier = Feature2Class().to(device)
     else:
-        raise NotImplementedError(f"{model_feature=}\n'maxpool30-ReLU', 'CNN-ReLU', 'rearange', 'nothing'")
+        raise NotImplementedError(f"{model_feature=}\n'maxpool25-ReLU', 'CNN-ReLU', 'rearange', 'nothing'")
 
     return model_bpm, model_feature, model_classifier
 

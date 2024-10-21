@@ -10,6 +10,5 @@
 /prof_history/
 /tool/__pycache__/
 /model/__pycache__/
-
-# job_leo.sh
-# run_kuma.sh
+/job_leo.sh
+/run_kuma.sh

@@ -114,7 +114,7 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
     dz_bpm = Ldist/layer_sampling  # propagation step in [m]
     Nz_bpm = round(Lz_bpm/dz_bpm) + 1   # propagation distances [pixel]
     z_bpm = (dz_bpm * torch.arange(0, Nz_bpm, 1, dtype=torch.float32))  # propagation distances [m]
-    assert z_bpm[-1] == Lz_bpm, f"{z_bpm[-1]=} != {Lz_bpm=}"
+    assert torch.isclose(z_bpm[-1], Lz_bpm), f"{z_bpm[-1]=} != {Lz_bpm=}"  # Use torch.isclose instead of == to avoid floating point error
     fast_range = torch.arange(Nz_bpm, dtype=torch.int32)
     if VERBOSE:
         print(f'{Nz_bpm=}')

@@ -5,8 +5,11 @@
 /edu/
 /wandb/
 /slurm-*
-/temp
-/prof
+/temp/
+/prof/
+/prof_history/
+/tool/__pycache__/
+/model/__pycache__/
 
 # job_leo.sh
 # run_kuma.sh

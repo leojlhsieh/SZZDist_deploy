@@ -33,3 +33,4 @@ python /scratch/jlhsieh/leo_scratch/SZZDist_deploy/leo_wandb_sweep_4.py \
 # choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_L40S', 'kuma_H100'])
 echo "==== Done ==================================="
 
+aaaa

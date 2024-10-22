@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn.parameter import Parameter
-from tool.check_gpu import check_gpu
+import logging
 
 
 def ceiling_nearest_power_of_2(n):
@@ -70,21 +70,33 @@ def field_interpolate(arr_in: torch.Tensor, size, pad=None, crop=None, amplitude
 VERBOSE = False
 keep_propagation = False
 
-# 'bpm_color': {'value': 'gray'},  # 'gray', 'rgb'
-# 'bpm_mode': {'value': 'bpm'},  # 'bpm', 'CNNpatch-bpm', 'fft-bpm', 'nothing'
-# 'bpm_depth': {'value': 4},  # 1, 2, 3, 4, 5, 6, 7, 8
-# 'bpm_width': {'value': 300},  # 75, 150, 300, 600, 1200
-# 'bpm_parallel': {'value': 1},
-# 'model_feature': {'value': 'maxpool25-ReLU'},  # 'CNN-ReLU', 'nothing'
 
+# Note
+# model_bpm, model_feature, model_classifier, bpm_inof = build_model(
+#     bpm_color=config.bpm_color,
+#     bpm_mode=config.bpm_mode,
+#     bpm_depth=config.bpm_depth,
+#     bpm_width=config.bpm_width,
+#     Ldist=config.Ldist,
+#     bpm_parallel=config.bpm_parallel,
+#     feature_mode=config.feature_mode,
+#     device=device
+# )
 
-def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
+def build_model_bpm(bpm_depth, bpm_width, Ldist, layer_sampling=4, device=None):
 
     Nx_slm = int(bpm_width)
     temp = bpm_width*2/0.7  # each SLM pixels contain 2 bpm pixels, only use the 0.7 center part of bpm area to avoid boundary effect
-    Nx_bpm = ceiling_nearest_power_of_2(int(temp))
+    temp = bpm_width*1/0.7  # each SLM pixels contain 1 bpm pixels, only use the 0.7 center part of bpm area to avoid boundary effect
+    Nx_bpm = ceiling_nearest_power_of_2(int(temp))  # Set Nx_bpm to the nearest power of 2. So that the FFT will be faster.
+    # Note
+    # Some examples of Nx_bpm for a given Nx_slm (aka bpm_width)
+    # Nx_slm, Nx_bpm = (150, 256)
+    # Nx_slm, Nx_bpm = (300, 512)
+    # Nx_slm, Nx_bpm = (600, 1024)
     del temp
 
+    # ===== Set grid for bpm SLM and camera =====
     # Set universal parameters
     wl0 = 849.5e-9  # free space wavelength in [m]
     n = 1.4525  # medium refractive index  # Fused silica @ 850 nm
@@ -97,8 +109,8 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
     # Usinging default indixing grid_x, grid_y = torch.meshgrid(x, y, indexing='xy')
     Nx_bpm = Nx_bpm   # width of BPM [pixel]
     Ny_bpm = Nx_bpm  # height of BPM [pixel]
-    dx_bpm = 4e-6  # pixel size of BPM [m]
-    dy_bpm = 4e-6  # pixel size of BPM [m]
+    dx_bpm = 8e-6  # pixel size of BPM [m]
+    dy_bpm = 8e-6  # pixel size of BPM [m]
     Lx_bpm = dx_bpm * (Nx_bpm - 1)  # width of BPM [m]
     Ly_bpm = dy_bpm * (Ny_bpm - 1)  # height of BPM [m]
     x_bpm = (dx_bpm * torch.arange(0, Nx_bpm, 1, dtype=torch.float32) - Lx_bpm/2).unsqueeze(0)  # x coordinates of the BPM grid, in [m]
@@ -106,16 +118,16 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
     if VERBOSE:
         print(f"{Nx_bpm=}, {Ny_bpm=}")
         print(f"{dx_bpm=}, {dy_bpm=}")
-        print(f"{Lx_bpm=}, {Ly_bpm=}")  # Lx_bpm=0.004092, Ly_bpm=0.004092
+        print(f"{Lx_bpm=}, {Ly_bpm=}")
 
-    Ldist = 6e-3  # distance between SLM and mirror [m]
-    layer_sampling = layer_sampling  # number of propagation steps from SLM to mirror
+    Ldist = Ldist  # distance between SLM and mirror [m]. nPOLO is 17.xx mm, SZZ is 6 mm
+    layer_sampling = layer_sampling  # number of propagation steps from SLM to mirror. nPolo is 4
     Lz_bpm = bpm_depth * 2 * Ldist  # total propagation distances [m]
     dz_bpm = Ldist/layer_sampling  # propagation step in [m]
     Nz_bpm = round(Lz_bpm/dz_bpm) + 1   # propagation distances [pixel]
     z_bpm = (dz_bpm * torch.arange(0, Nz_bpm, 1, dtype=torch.float32))  # propagation distances [m]
     assert torch.isclose(z_bpm[-1], torch.tensor(Lz_bpm, dtype=torch.float32)), f"{z_bpm[-1]=} != {Lz_bpm=}"  # Use torch.isclose instead of == to avoid floating point error
-    fast_range = torch.arange(Nz_bpm, dtype=torch.int32)
+    fast_range = torch.arange(Nz_bpm, dtype=torch.int32)  # To make sure it's long enough for the loop.  # for i in range(N) is slow on GPU because range is on CPU
     if VERBOSE:
         print(f'{Nz_bpm=}')
         print(f'{dz_bpm=}')
@@ -138,7 +150,7 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
         plot_field(super_gaussian, title='super_gaussian')
 
     # Set coordinates for SLM
-    Nx_slm = Nx_slm  # width of SLM [pixel]
+    Nx_slm = int(bpm_width)  # width of SLM [pixel]
     Ny_slm = Nx_slm  # height of SLM [pixel]
     dx_slm = 8e-6  # pixel size of SLM [m]
     dy_slm = 8e-6  # pixel size of SLM [m]
@@ -165,7 +177,18 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
         print(f"{dx_cam=}, {dy_cam=}")
         print(f"{Lx_cam=}, {Ly_cam=}")
 
-    # SLM and BPM coordinate conversion
+    bpm_info = {
+        'bpm_Nx_dx_Lx': (Nx_bpm, dx_bpm, Lx_bpm),
+        'bpm_Lz_dz_Nz': (Lz_bpm, dz_bpm, Nz_bpm),
+        'slm_Nx_dx_Lx': (Nx_slm, dx_slm, Lx_slm),
+        'cam_Nx_dx_Lx': (Nx_cam, dx_cam, Lx_cam),
+        'layer_sampling': layer_sampling,
+        'Ldist': Ldist,
+        'bpm_depth': bpm_depth,
+        'bpm_width': bpm_width,
+    }
+
+    # ===== Coordinate conversion =====
     # SLM upsample to BPM
     ny_nx_slm2bpm = (int(Ny_slm*dy_slm/dy_bpm), int(Nx_slm*dx_slm/dx_bpm))  # for 'size' in nn.functional.interpolate
     ny = ny_nx_slm2bpm[0]
@@ -210,6 +233,7 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
     crop_bpm2cam = (int(y_start), int(y_start+Ny), int(x_start), int(x_start+Nx))  # for 'crop' in my function crop2d
     del nx, ny, Nx, Ny, x_start, y_start
 
+    # ===== Set input field and modulation =====
     # Gaussian beam input
     beam_fwhm = 5e-3  # [m]
     beam_scale = beam_fwhm / (2*torch.sqrt(torch.log(torch.tensor(2, dtype=torch.float32))))
@@ -248,9 +272,14 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
     if VERBOSE:
         plot_field(blazed_grating_slm, title='blazed_grating_slm')
         plot_field(blazed_grating_bpm, title='blazed_grating_bpm')
+    field_in = field_in * blazed_grating_bpm
+    if VERBOSE:
+        plot_field(field_in, title='field_in')
+
+    # input('Press Enter to continue...')
 
     # System modulation
-    system_modulation = torch.ones((bpm_depth, 1, 1, Ny_bpm, Nx_bpm), dtype=torch.complex64)  # Dim should be 5, [bpm_depth, Batch, Channel, Height, Width]
+    # system_modulation = torch.ones((bpm_depth, 1, 1, Ny_bpm, Nx_bpm), dtype=torch.complex64)  # Dim should be 5, [bpm_depth, Batch, Channel, Height, Width]
     # system_modulation[0, :, :, :, :] = blazed_grating_bpm
     # system_modulation[1, :, :, :, :] = lens_bpm
     # system_modulation[2, :, :, :, :] = torch.conj(blazed_grating_bpm)
@@ -281,24 +310,24 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
             self.layer_sampling = torch.tensor(layer_sampling).to(device)  # tensor(int)
             self.bpm_depth = torch.tensor(bpm_depth).to(device)  # tensor(int)
 
-            # SLM and BPM coordinate conversion
-            self.ny_nx_slm2bpm = (1, *ny_nx_slm2bpm)  # Must be tuple, for 'size' in nn.functional.interpolate,  its length has to match the number of spatial dimensions; input.dim() - 2.
+            # # SLM and BPM coordinate conversion
+            # self.ny_nx_slm2bpm = (1, *ny_nx_slm2bpm)  # Must be tuple, for 'size' in nn.functional.interpolate,  its length has to match the number of spatial dimensions; input.dim() - 2.
+            # self.ny_nx_bpm2cam = ny_nx_bpm2cam  # Must be  tuple
+            # self.system_modulation = system_modulation.to(device)
             self.pad_slm2bpm = pad_slm2bpm  # Must be  tuple
-            self.system_modulation = system_modulation.to(device)
-            self.ny_nx_bpm2cam = ny_nx_bpm2cam  # Must be  tuple
             self.crop_bpm2cam = crop_bpm2cam  # Must be tuple
+
+            # Training parameters, random initialization will be too scatter and then we will lost light
+            self.phase_scale = Parameter(torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
+            self.phase_bias = Parameter(torch.zeros((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
             self.fast_range = fast_range.to(device)
-            pi_cuda = torch.tensor(pi, dtype=torch.float32, device=device)
-            # Training parameters, 0 mean, pi variance
-            self.phase_scale = Parameter(pi_cuda * torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
-            self.phase_bias = Parameter(pi_cuda * torch.ones((bpm_depth, 1, 1, Ny_slm, Nx_slm), dtype=torch.float32, device=device))
 
         def forward(self, input: torch.Tensor) -> torch.Tensor:
             # Prepare modulation at SLM
             input = input.unsqueeze(0)  # Dim should be 5, [bpm_depth, Batch, Channel, Height, Width]
             slm_modulation_phase_slm = input * self.phase_scale + self.phase_bias
-            temp = nn.functional.interpolate(slm_modulation_phase_slm, size=self.ny_nx_slm2bpm)
-            slm_modulation_phase_bpm = nn.functional.pad(temp, pad=self.pad_slm2bpm, mode='constant', value=0)
+            # temp = nn.functional.interpolate(slm_modulation_phase_slm, size=self.ny_nx_slm2bpm)
+            slm_modulation_phase_bpm = nn.functional.pad(slm_modulation_phase_slm, pad=self.pad_slm2bpm, mode='constant', value=0)
             slm_modulation_bpm = torch.exp(1j*slm_modulation_phase_bpm)
 
             # BPM core
@@ -310,7 +339,7 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
             # propagation[:, :, :, :, step_count] = u0
             for i in self.fast_range[:self.bpm_depth]:  # for i in range(bpm_depth) will be slow
                 # Step 1: Modrulation at illumination or mirror
-                u0 = u0 * self.system_modulation[i, :, :, :, :]
+                # u0 = u0 * self.system_modulation[i, :, :, :, :]
 
                 # Step 2: BPM propagation from mirror to SLM
                 for _ in self.fast_range[:self.layer_sampling]:  # for _ in range(layer_sampling) will be slow
@@ -329,13 +358,13 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
 
             # Capture by camera
             intensity_out_bpm = torch.square(u0.abs())
-            temp = nn.functional.interpolate(intensity_out_bpm, size=self.ny_nx_bpm2cam)
+            # temp = nn.functional.interpolate(intensity_out_bpm, size=self.ny_nx_bpm2cam)
             y_start, y_end, x_start, x_end = self.crop_bpm2cam
-            intensity_out_cam = temp[:, :, y_start:y_end, x_start:x_end]
+            intensity_out_cam = intensity_out_bpm[:, :, y_start:y_end, x_start:x_end]
             # if VERBOSE:
             #     plot_field(self.field_in, title='field_in')
             #     for i in self.fast_range[:bpm_depth]:  # for i in range(bpm_depth) will be slow
-            #         plot_field(self.system_modulation[i, :, :, :, :], title=f'system_modulation[{i}]')
+            #         # plot_field(self.system_modulation[i, :, :, :, :], title=f'system_modulation[{i}]')
             #         plot_field(slm_modulation_bpm[i, :, :, :, :], title=f'slm_modulation_bpm[{i}]')
             #     plot_field(intensity_out_bpm, title='intensity_out_bpm')
             #     plot_field(intensity_out_cam, title='intensity_out_cam')
@@ -344,7 +373,7 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
             return intensity_out_cam
 
     model_object = SZZBPM(device=device)
-    return model_object
+    return model_object, bpm_info
 
 
 # ██████╗ ██╗   ██╗██╗██╗     ██████╗     ██████╗     ███╗   ███╗ ██████╗ ██████╗ ███████╗██╗     ███████╗
@@ -354,19 +383,36 @@ def build_model_bpm(bpm_depth, bpm_width, layer_sampling=6, device=None):
 # ██████╔╝╚██████╔╝██║███████╗██████╔╝    ██████╔╝    ██║ ╚═╝ ██║╚██████╔╝██████╔╝███████╗███████╗███████║
 # ╚═════╝  ╚═════╝ ╚═╝╚══════╝╚═════╝     ╚═════╝     ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝
 
-def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_feature, device=None):
-    # Building BPM model
+
+# Note
+# model_bpm, model_feature, model_classifier, bpm_inof = build_model(
+#     bpm_color=config.bpm_color,
+#     bpm_mode=config.bpm_mode,
+#     bpm_depth=config.bpm_depth,
+#     bpm_width=config.bpm_width,
+#     Ldist=config.Ldist,
+#     bpm_parallel=config.bpm_parallel,
+#     feature_mode=config.feature_mode,
+#     device=device
+# )
+
+
+def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, Ldist, bpm_parallel, feature_mode, device=None):
+    # ===== Building BPM model =====
     if bpm_color == 'gray' and bpm_mode == 'bpm' and bpm_parallel == 1:
-        model_bpm = build_model_bpm(bpm_depth, bpm_width, device=device)
+        # model_bpm.to(device) # <<< This will cause error, model_bpm.to(device) is currelely not working. Please assign device to build_model_bpm function's argument
+        model_bpm, bpm_info = build_model_bpm(bpm_depth=bpm_depth,
+                                              bpm_width=bpm_width,
+                                              Ldist=Ldist,
+                                              layer_sampling=4,
+                                              device=device)
     else:
         raise NotImplementedError(f"{bpm_color=}, {bpm_mode=}, {bpm_parallel=}\n'gray', 'rgb'\n'bpm', 'CNNpatch-bpm', 'fft-bpm', 'nothing'\n1, 3")
 
-    # Building feature model and class model
-    if model_feature == 'maxpool25-ReLU':
-        pooling_number = bpm_width // 28  #
-
+    # ===== Building feature model and classifier model =====
+    if feature_mode == 'avgpool25-ReLU':
         class BPM2Feature(nn.Module):
-            """ Extract feature from BPM model 
+            """ Extract feature from BPM model
             input camera captured image, abs^2 of field:
                 size: (batch, 1, 300, 300)  # Camera has same resolution as SLM
                 dtype: torch.float32
@@ -380,7 +426,7 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
             def __init__(self):
                 super().__init__()
                 self.layer_stack = nn.Sequential(
-                    nn.MaxPool2d(kernel_size=bpm_width // 25, stride=bpm_width // 25),  # make output size batchx1x25x25
+                    nn.AvgPool2d(kernel_size=bpm_width // 25, stride=bpm_width // 25),  # make output size batchx1x25x25
                     nn.Flatten(),
                     nn.Linear(in_features=25*25, out_features=768),  # 75=25*3, 150=25*6, 300=25*12, 600=25*24, 1200=25*48
                     nn.ReLU(),
@@ -390,29 +436,30 @@ def build_model(bpm_color, bpm_mode, bpm_depth, bpm_width, bpm_parallel, model_f
                 return self.layer_stack(x)
         model_feature = BPM2Feature().to(device)
 
-        class Feature2Class(nn.Module):
-            """ Extract feature from BPM model 
-            input feature:
-                size: (batch, 768)  # 768 is the feature size of the model
-                dtype: torch.float32
-                value: Not limited
-            output class:
-                size: (batch, 10)  # 10 is the number of classes
-                dtype: torch.float32
-                value: Not limited
-            """
-
-            def __init__(self):
-                super().__init__()
-                self.linear_layer = nn.Linear(768, 10)
-
-            def forward(self, x: torch.Tensor) -> torch.Tensor:
-                return self.linear_layer(x)
-        model_classifier = Feature2Class().to(device)
     else:
-        raise NotImplementedError(f"{model_feature=}\n'maxpool25-ReLU', 'CNN-ReLU', 'rearange', 'nothing'")
+        raise NotImplementedError(f"{feature_mode=}\n'avgpool25-ReLU', 'CNN-ReLU', 'rearange', 'nothing'")
 
-    return model_bpm, model_feature, model_classifier
+    class Feature2Class(nn.Module):
+        """ Extract feature from BPM model
+        input feature:
+            size: (batch, 768)  # 768 is the feature size of the model
+            dtype: torch.float32
+            value: Not limited
+        output class:
+            size: (batch, 10)  # 10 is the number of classes
+            dtype: torch.float32
+            value: Not limited
+        """
+
+        def __init__(self):
+            super().__init__()
+            self.linear_layer = nn.Linear(768, 10)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return self.linear_layer(x)
+    model_classifier = Feature2Class().to(device)
+
+    return model_bpm, model_feature, model_classifier, bpm_info
 
 
 if __name__ == '__main__':
@@ -421,16 +468,28 @@ if __name__ == '__main__':
     import sys
     file = Path(__file__).resolve()
     sys.path.append(str(Path(file).resolve().parent.parent))
+    from tool.check_gpu import check_gpu
+    from pprint import pprint
+
+    logging.basicConfig(level=logging.DEBUG)
 
     check_gpu()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
     bpm_depth = 4
-    bpm_width = 120
-    layer_sampling = 6
-    model_bpm = build_model_bpm(bpm_depth, bpm_width, layer_sampling, device=device)
+    bpm_width = 600
+    Ldist = 0.006
+    layer_sampling = 4
+    model_bpm, bpm_info = build_model_bpm(bpm_depth=bpm_depth,
+                                          bpm_width=bpm_width,
+                                          Ldist=Ldist,
+                                          layer_sampling=layer_sampling,
+                                          device=device)
+    # model_bpm.to(device) # <<< This will cause error, model_bpm.to(device) is currelely not working. Please assign device to build_model_bpm function's argument
+    pprint(bpm_info)
     image_in = torch.ones(1, 1, bpm_width, bpm_width, dtype=torch.float32, device=device)  # [batch, channel, height, width]
-
+    # plot_field(image_in, title='image_in')
     camera_out = model_bpm(image_in)
+    # plot_field(camera_out, title='camera_out')
 # %%

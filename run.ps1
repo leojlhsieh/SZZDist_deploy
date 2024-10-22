@@ -1,12 +1,12 @@
 # Description: Run a python script with arguments                                                             .                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
 
-& C:/Users/musta/miniconda3/envs/leopy311/python.exe `
- c:/Users/musta/Documents/leo-code-space/SZZDist_deploy/leo_wandb_sweep_5.py `
-    --machine_name=musta_3090Ti `
-    --data_name=my_mnist `
-    --epochs=2 `
-    --small_toy=0 `
-    --batch_size=32 
+# & C:/Users/musta/miniconda3/envs/leopy311/python.exe `
+#  c:/Users/musta/Documents/leo-code-space/SZZDist_deploy/leo_wandb_sweep_5.py `
+#     --machine_name=musta_3090Ti `
+#     --data_name=my_mnist `
+#     --epochs=2 `
+#     --small_toy=0 `
+#     --batch_size=32 
 
 
 
@@ -22,16 +22,16 @@
 
 
 # Test time spend
-# & C:/Users/musta/miniconda3/envs/leopy311/python.exe `
-#  c:/Users/musta/Documents/leo-code-space/SZZDist_deploy/leo_wandb_sweep_5.py `
-#     --machine_name=musta_3090Ti `
-#     --data_name=my_imagenette `
-#     --epochs=2 `
-#     --small_toy=0 `
-#     --batch_size=32 `
-#     --bpm_depth=3 `
-#     --bpm_width=150 `
-#     --sweep_id=honv7b1g
+& C:/Users/musta/miniconda3/envs/leopy311/python.exe `
+ c:/Users/musta/Documents/leo-code-space/SZZDist_deploy/leo_wandb_sweep_5.py `
+    --machine_name=musta_3090Ti `
+    --data_name=my_fashion_mnist `
+    --epochs=15 `
+    --small_toy=3 `
+    --batch_size=32 `
+    --bpm_depth=3 `
+    --bpm_width=150 `
+    --sweep_id=k490emng
 
 
 # choices=[1, 2, 3, 4, 5, 6, 7, 8]

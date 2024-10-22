@@ -49,7 +49,7 @@ parser.add_argument("--temp1", type=str, default='ccc')
 parser.add_argument("--machine_name", type=str, default='musta_3090Ti', choices=['musta_3090Ti', 'musta_2080Ti', 'haitao_2080Ti', 'kuma_L40S', 'kuma_H100'])  # , required=True)
 parser.add_argument("--entity_name", type=str, default='leohsieh-epfl')
 parser.add_argument("--project_name", type=str, default='szzbpm-distil-5')
-parser.add_argument("--sweep_id", type=str, default=None, help="If not provided, use a empty sweep created by leo(empty-random-honv7b1g)")
+parser.add_argument("--sweep_id", type=str, default=None, help="If not provided, use a empty sweep created by leo(random-93e3dtbc)")
 
 parser.add_argument("--data_name", type=str, default='my_imagenette', choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette'])  # , required=True)
 parser.add_argument("--epochs", type=int, default=15)
@@ -207,16 +207,17 @@ def called_by_wandb_sweep_agent():
             [{'name': 'lr_bpm', 'params': model_bpm.parameters(), 'lr': config.lr_bpm},
              {'name': 'lr_feature', 'params': model_feature.parameters(), 'lr': config.lr_feature},
              {'name': 'lr_class', 'params': model_classifier.parameters(), 'lr': config.lr_class},
-             ], weight_decay=0.03,)  # 'AdamW' object has no attribute 'to', default weight_decay=0.01
+             ], weight_decay=0.01,)  # 'AdamW' object has no attribute 'to', default weight_decay=0.01, ViT use 0.05
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
             max_lr=[config.lr_bpm, config.lr_feature, config.lr_class],
             epochs=config.epochs,
-            steps_per_epoch=data_info['train_batches'],
-            pct_start=0.1,
-            anneal_strategy='cos',
-            div_factor=8,
-            final_div_factor=256)  # 'OneCycleLR' object has no attribute 'to'
+            steps_per_epoch=data_info['train_batches'],)
+            # pct_start=0.1, # default 0.3
+            # anneal_strategy='linear', # default 'cos'
+            # div_factor=8, # default 25
+            # final_div_factor=256, # default 10000
+            # )  # 'OneCycleLR' object has no attribute 'to'
         loss_ratio = torch.tensor(config.loss_ratio).to(device)  # avoid CPU to GPU transfer
         one = torch.tensor(1.0).to(device)
 

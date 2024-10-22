@@ -100,10 +100,10 @@ vars(args).update({'script_path': str(script_path)})
 logging.info(f'{args.wanb_runname = }')  # Example: "musta_3090Ti--2024-10-17_15-09-58.123456"
 logging.info(f'{args.script_path = }')
 if args.sweep_id is None:
-    sweep_id_dict = {'my_mnist': '3ds282pq',
-                     'my_fashion_mnist': 'txru3cue',
-                     'my_cifar10': 'sqfb66bs',
-                     'my_imagenette': 'uv5pnh30',
+    sweep_id_dict = {'my_mnist': '6hmykyxr',
+                     'my_fashion_mnist': 'js4zojc3',
+                     'my_cifar10': 'lwi954r2',
+                     'my_imagenette': '6vj8qy15',
                      }
     vars(args).update({'sweep_id': sweep_id_dict[args.data_name]})
 full_sweep_id = f'{args.entity_name}/{args.project_name}/{args.sweep_id}'

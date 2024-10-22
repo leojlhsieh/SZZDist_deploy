@@ -62,7 +62,7 @@ print(sweep_indices)
 
 # %%
 # Create wandb sweep configuration
-data_name = 'my_cifar10'  # choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette']
+data_name = 'my_imagenette'  # choices=['my_mnist', 'my_fashion_mnist', 'my_cifar10', 'my_imagenette']
 entity_name = 'leohsieh-epfl'
 project_name = 'szzbpm-distil-5'
 

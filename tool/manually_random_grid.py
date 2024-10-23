@@ -29,6 +29,8 @@ hyperparameters = {
     'lr_class': log_uniform_distribution(start=2.5e-4 * 0.1, end=2.5e-4 * 10, points=7),  # nPOLO paper use lr=2.5e-4 for digital classifier
     'loss_ratio': [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]  # Total loss = loss_ratio * L1 + (1-loss_ratio) * L2
 }
+pprint(hyperparameters)
+
 
 combinations = create_hyperparameter_combinations(**hyperparameters)
 print("Number of combinations:", len(combinations))

@@ -63,11 +63,11 @@ parser.add_argument("--lr_class", type=float, default=2.5e-03, help="nPOLO paper
 parser.add_argument("--lr_scheduler", type=str, default='OneCycleLR')
 parser.add_argument("--optimizer", type=str, default='adamW')
 parser.add_argument("--bpm_color", type=str, default='gray', choices=['gray', 'rgb'])
-parser.add_argument("--bpm_mode", type=str, default='bpm', choices=['bpm', 'CNNpatch-bpm', 'fft-bpm', 'nothing'])
+parser.add_argument("--bpm_mode", type=str, default='bpm', choices=['bpm', 'CNNpatch-bpm', 'fft-bpm', 'nothing', 'abs2', 'CNNpatch'])
 parser.add_argument("--bpm_depth", type=int, default=4, choices=[2, 3, 4, 5, 6, 7, 8])
 parser.add_argument("--bpm_width", type=int, default=300, choices=[75, 150, 300, 600, 1200])
 parser.add_argument("--Ldist", type=float, default=6e-03, choices=[3e-3, 6e-3, 12e-3], help="Distance between SLM & mirror [m]")
-parser.add_argument("--bpm_parallel", type=int, default=1)
+parser.add_argument("--bpm_parallel", type=int, default=1, help='Like Multi-heat Attention, Like Multi-kernel Convolution')
 parser.add_argument("--feature_mode", type=str, default='avgpool25-ReLU', choices=['avgpool25-ReLU', 'CNN-ReLU', 'rearange', 'nothing'])
 
 parser.add_argument("--small_toy", type=int, default=0, help="Use a small dataset of `small_toy` batches for debugging. 0 means full dataset")

@@ -6,6 +6,7 @@ slurm-log/*
 !slurm-log/.gitkeep
 edu/
 wandb/
+wandb_old/
 temp/
 prof/
 prof_archive/

@@ -1,0 +1,20 @@
+#### pip install -r requirements.txt
+torch
+torchvision
+torchaudio
+transformers
+datasets
+accelerate
+scikit-learn
+wandb
+tqdm
+ipykernel
+torch-summary
+torchviz
+torch_tb_profiler
+tensorboard
+numpy
+scipy
+matplotlib
+nvidia-ml-py
+gpustat

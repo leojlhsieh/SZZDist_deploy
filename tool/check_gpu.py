@@ -24,5 +24,8 @@ def check_gpu() -> None:
 
 if __name__ == "__main__":
     # print python version
+    logging.basicConfig(level=logging.DEBUG)
+    # logging.info = print
     logging.info(f"Python version: {sys.version}")
     check_gpu()
+# %%
